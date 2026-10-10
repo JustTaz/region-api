@@ -2,20 +2,22 @@ const express = require('express');
 const axios = require('axios');
 const app = express();
 
-app.get('/', (req, res) => {
-	res.json({ message: 'API is working' });
-});
-
 app.get('/region', async (req, res) => {
 	try {
-		const ipResponse = await axios.get('https://api.ipify.org?format=json');
-		const ip = ipResponse.data.ip;
+		// Get the IP of whoever is making the request (the Roblox server)
+		let serverIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 		
-		const regionResponse = await axios.get('http://ip-api.com/json/' + ip + '?fields=city,country,countryCode');
+		// Clean up the IP (remove IPv6 prefix if present)
+		if (serverIp.startsWith('::ffff:')) {
+			serverIp = serverIp.substring(7);
+		}
+		
+		// Look up the region using that IP
+		const regionResponse = await axios.get(`http://ip-api.com/json/${serverIp}?fields=city,region,country,countryCode`);
 		const data = regionResponse.data;
 		
 		res.json({
-			region: data.city + ', ' + data.country,
+			region: data.city + ', ' + data.region + ', ' + data.country,
 			countryCode: data.countryCode
 		});
 	} catch (err) {
